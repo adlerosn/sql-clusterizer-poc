@@ -3,5 +3,7 @@ athlete_events.csv
 athlete_events.sqlite3
 athlete_events_classified.csv
 athlete_events_classified.sqlite3
+athlete_events_classified.sqlite3~
+athlete_events_classified.sqlite3~-journal
 query1.sql
 db.sqlite3

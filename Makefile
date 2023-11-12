@@ -1,6 +1,6 @@
-athlete_events_classified.csv: athlete_events_classified.sqlite3
+athlete_events_classified.csv: athlete_events_classified.sqlite3 query.sql
 	sqlite3 athlete_events_classified.sqlite3 -csv -header "SELECT * FROM classification;" > athlete_events_classified.csv
-athlete_events_classified.sqlite3: athlete_events.sqlite3 query1.sql
+athlete_events_classified.sqlite3: athlete_events.sqlite3 query1.sql query.sql
 	cp -f athlete_events.sqlite3 athlete_events_classified.sqlite3~
 	sqlite3 athlete_events_classified.sqlite3~ -csv -header "$$(cat query1.sql)"
 	mv athlete_events_classified.sqlite3~ athlete_events_classified.sqlite3

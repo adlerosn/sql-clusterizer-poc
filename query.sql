@@ -7,7 +7,7 @@ WITH RECURSIVE src AS ( -- BigOh: O(lines)
 		Year as year
 	from athlete_events
 	where Age is not NULL and Height is not NULL and Weight is not NULL and Year is not NULL
-	limit 1024
+	limit 64
 ), stdsclaux AS ( -- BigOh: O(lines)
 	SELECT -- This subquery gets the MAX and MIN for each column in order to apply standard scale
 		max(age) AS maxage,
@@ -69,14 +69,42 @@ WITH RECURSIVE src AS ( -- BigOh: O(lines)
 	GROUP BY c.ida, c.idb
 ), scrstdsclgp1 AS ( -- BigOh: O(POW(lines, POW(2, desired_clusters))) ??
 	SELECT -- This SLOW subquery tries to solve the combinatory problem of getting the N points that are farthest away between themselves
+	    -- Think on how to select 1 2 4 3 from the X Y below without taking taking 5 6 7 8 9 as shortcuts
+	    --  1          2
+		--   5      6
+		--               9
+		--     7
+		--             8
+		--  3           4
+		-- This means discovering from the full cartesian distance graph K_9 the
+		-- 4 nodes in which the sum maximizes the sum, without having other intermediaty
+		-- point selected, such as in 1 4 2 3, as it's closer for 1 to go to 3 than to 4.
+		-- Also, 1 8 5 4 loop must be an invalid sequence as 1 to 5 is smaller than 1 to 8 to 5.
 		t1.ida as id1,
 		t2.ida as id2,
-		t1.dist + t2.dist as dist
+		t3.ida as id3,
+		t4.ida as id4,
+		t1.dist + t2.dist + t3.dist + t4.dist + t12.dist + t23.dist as dist,
+		t1.dist + t2.dist + t3.dist + t4.dist as peri
 	FROM scrstdscldst AS t1
 	INNER JOIN scrstdscldst AS t2
-	ON (t1.idb = t2.ida AND t2.idb = t1.ida) -- t(n-1).b = t(n).a; if last, also t(n).b = t(first).a
-	WHERE t1.ida <> t2.ida -- ensuring output idX will be distinct
-	ORDER BY dist DESC LIMIT 1 -- only the largest distance
+	ON (t1.idb = t2.ida) -- t(n-1).b = t(n).a
+	INNER JOIN scrstdscldst AS t3
+	ON (t2.idb = t3.ida) -- t(n-1).b = t(n).a
+	INNER JOIN scrstdscldst AS t4
+	ON (t3.idb = t4.ida AND t4.idb = t1.ida) -- t(n-1).b = t(n).a; if last, also t(n).b = t(first).a
+	INNER JOIN scrstdscldst AS t12 -- non-perimeter k graph component
+	ON (t12.ida = t1.ida AND t12.idb = t2.idb)
+	INNER JOIN scrstdscldst AS t23  -- non-perimeter k graph component
+	ON (t23.ida = t2.ida AND t23.idb = t3.idb)
+	WHERE 1=1
+		AND t1.ida <> t2.ida -- ensuring output idX will be distinct
+		AND t1.ida <> t3.ida -- ensuring output idX will be distinct
+		AND t1.ida <> t4.ida -- ensuring output idX will be distinct
+		AND t2.ida <> t3.ida -- ensuring output idX will be distinct
+		AND t2.ida <> t4.ida -- ensuring output idX will be distinct
+		AND t3.ida <> t4.ida -- ensuring output idX will be distinct
+	ORDER BY dist DESC, peri ASC LIMIT 1 -- only the largest distance with smallest perimeter
 ), scrstdsclgrv AS ( -- BigOh(desired_clusters)
 	SELECT -- this subquery transforms each group representative back into virtual vector form
 		1 as cl,
@@ -95,6 +123,24 @@ WITH RECURSIVE src AS ( -- BigOh: O(lines)
 	FROM scrstdsclgp1 AS g
 	INNER JOIN scrstdscllin AS v
 	ON (v.id = g.id2)
+	UNION ALL
+	SELECT
+		3 as cl,
+		v.id,
+		v.attr,
+		v.val
+	FROM scrstdsclgp1 AS g
+	INNER JOIN scrstdscllin AS v
+	ON (v.id = g.id3)
+	UNION ALL
+	SELECT
+		4 as cl,
+		v.id,
+		v.attr,
+		v.val
+	FROM scrstdsclgp1 AS g
+	INNER JOIN scrstdscllin AS v
+	ON (v.id = g.id4)
 ), scrstdsclgrpdst AS ( -- BigOh(line*desired_clusters*attributes)
 	SELECT -- This subquery calculates the distance between each distinct element
 		c.id,
