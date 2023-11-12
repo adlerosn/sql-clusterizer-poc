@@ -18,4 +18,5 @@ clean:
 	rm -f athlete_events.sqlite3
 	rm -f athlete_events_classified.csv
 	rm -f athlete_events_classified.sqlite3
+	rm -f query1.sql
 	rm -f db.sqlite3
